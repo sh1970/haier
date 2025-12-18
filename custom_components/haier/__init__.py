@@ -54,12 +54,15 @@ async def token_updater(hass: HomeAssistant, entry: ConfigEntry, signal: threadi
     :return:
     """
     while not signal.is_set():
-        if await try_update_token(hass, entry):
-            _LOGGER.info('token refreshed, reload integration...')
-            await hass.config_entries.async_reload(entry.entry_id)
-            break
-        else:
-            _LOGGER.debug('token is valid')
+        try:
+            if await try_update_token(hass, entry):
+                _LOGGER.info('token refreshed, reload integration...')
+                await hass.config_entries.async_reload(entry.entry_id)
+                break
+            else:
+                _LOGGER.debug('token is valid')
+        except Exception:
+            _LOGGER.exception('token update failed')
 
         await asyncio.sleep(3600)
 
