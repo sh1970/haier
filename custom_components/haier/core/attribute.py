@@ -96,7 +96,8 @@ class V1SpecAttributeParser(HaierAttributeParser, ABC):
 
         # 洗碗机/洗衣机：对只读LIST类型的洗涤模式属性，保留原Sensor作为状态读取，
         # 同时额外生成Select实体用于在HA中切换模式
-        _control_attrs = {'washprog', 'partitionwashstatus', 'runningmode'}
+        # 干衣机：drycycle(干燥程序)固件实际接受写入（含一键智烘），据此生成Select支持远程选程序
+        _control_attrs = {'washprog', 'partitionwashstatus', 'runningmode', 'drycycle'}
         for attr in attributes:
             if attr['name'].lower() in _control_attrs \
                     and equals_ignore_case(attr['valueRange']['type'], 'LIST'):
