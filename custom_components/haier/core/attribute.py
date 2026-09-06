@@ -63,6 +63,14 @@ class V1SpecAttributeParser(HaierAttributeParser, ABC):
         if attribute['writable'] and equals_ignore_case(attribute['valueRange']['type'], 'STEP') and contains_any_ignore_case(attribute['valueRange']['dataStep']['dataType'], ['Integer', 'Double']):
             return self._parse_as_number(attribute)
 
+        # One-way boolean commands (for example the refrigerator's forced
+        # sterilization actions) are represented by a one-item LIST.  They are
+        # not selects: the returned false value means "not currently firing"
+        # and is not one of the selectable options.  Expose them as buttons so
+        # HA never presents an invalid current option or a misleading toggle.
+        if attribute['writable'] and V1SpecAttributeParser._is_one_way_boolean_command(attribute):
+            return self._parse_as_button(attribute)
+
         # 一定要在select之前，不然会被select覆盖
         if attribute['writable'] and V1SpecAttributeParser._is_binary_attribute(attribute):
             return self._parse_as_switch(attribute)
@@ -182,6 +190,26 @@ class V1SpecAttributeParser(HaierAttributeParser, ABC):
         }
 
         return HaierAttribute(attribute['name'], attribute['desc'], Platform.SWITCH, options)
+
+    @staticmethod
+    def _parse_as_button(attribute):
+        item = attribute['valueRange']['dataList'][0]
+        return HaierAttribute(
+            attribute['name'],
+            attribute['desc'],
+            Platform.BUTTON,
+            ext={'command_value': item['data']}
+        )
+
+    @staticmethod
+    def _is_one_way_boolean_command(attribute):
+        value_range = attribute.get('valueRange', {})
+        data_list = value_range.get('dataList', [])
+        return (
+            equals_ignore_case(value_range.get('type'), 'LIST')
+            and len(data_list) == 1
+            and str(data_list[0].get('data')).lower() in ('true', 'false')
+        )
 
     @staticmethod
     def _parse_as_climate(attributes: List[dict], feature_fields: List[str]):
